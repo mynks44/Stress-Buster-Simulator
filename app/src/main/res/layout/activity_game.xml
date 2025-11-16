@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/gameRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <Button
+        android:id="@+id/btnReward"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Free Reward"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="#AA000000"
+        android:textColor="@android:color/white"
+        android:padding="10dp" />
+
+</FrameLayout>
