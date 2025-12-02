@@ -1,6 +1,7 @@
 package com.example.stressbustersimulator
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.*
 import android.media.AudioAttributes
 import android.media.SoundPool
@@ -8,7 +9,7 @@ import android.util.AttributeSet
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
-import kotlin.math.sqrt
+import android.widget.Toast
 import kotlin.random.Random
 
 class GameView @JvmOverloads constructor(
@@ -16,54 +17,92 @@ class GameView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
+
     enum class Mode {
         BUBBLE,
-        PAINT_SPLASH
+        PAINT_SPLASH,
+        SAND_CUT,
+        SOAP_SLICE,
+        LEAF_CRUSH,
+        ZIPPER_OPEN,
+        STICKER_PEEL,
+        SHREDDER
+    }
+
+    // NEW: Two splash behavior modes
+    enum class SplashMode {
+        VANISH,        // splash disappears
+        PERMANENT      // splash stays forever
+    }
+
+    private var splashMode: SplashMode = SplashMode.VANISH
+
+    fun setSplashMode(mode: SplashMode) {
+        splashMode = mode
     }
 
     private var currentMode: Mode = Mode.BUBBLE
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bgColor = Color.parseColor("#101010")
+    fun setMode(m: Mode) {
+        currentMode = m
 
-    private val bubbleColor = Color.parseColor("#74C0FC")
-    private val poppedColor = Color.parseColor("#495057")
+        when (m) {
+            Mode.BUBBLE -> createBubbleGrid()
+            Mode.PAINT_SPLASH -> {
+                splashes.clear()
+                splashCount = 0
+                invalidate()
+            }
+            Mode.SAND_CUT -> {
+                sandCuts.clear()
+                invalidate()
+            }
+            else -> {  }
+        }
+    }
 
-    private var screenWidth = 0
-    private var screenHeight = 0
 
-    private val bubbles = mutableListOf<Bubble>()
-    private var poppedCount = 0
-    private var totalBubbles = 0
-    private var showResetMessage = false
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(Prefs.PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val splashes = mutableListOf<Splash>()
-    private var splashCount = 0
+    var satisfaction = 0
+    var onSatisfactionChange: ((Int) -> Unit)? = null
+
+    private fun updateSatisfaction(amount: Int) {
+        satisfaction += amount
+        if (satisfaction > 100) satisfaction = 100
+        onSatisfactionChange?.invoke(satisfaction)
+    }
+
+    private fun updateDailyChallenge() {
+        val current = prefs.getInt(Prefs.KEY_DAILY_PROGRESS, 0) + 1
+        prefs.edit().putInt(Prefs.KEY_DAILY_PROGRESS, current).apply()
+
+        val goal = prefs.getInt(Prefs.KEY_DAILY_GOAL, 50)
+
+        if (current >= goal && !prefs.getBoolean(Prefs.KEY_UNLOCK_SUPER_SPLASH, false)) {
+            unlockTool()
+        }
+    }
+
+    private fun unlockTool() {
+        prefs.edit().putBoolean(Prefs.KEY_UNLOCK_SUPER_SPLASH, true).apply()
+        Toast.makeText(context, "Super Splash Unlocked!", Toast.LENGTH_LONG).show()
+    }
+
 
     private var soundPool: SoundPool? = null
-    private var popSoundId: Int = 0
-    private var splashSoundId: Int = 0
-
+    private var popSoundId = 0
+    private var splashSoundId = 0
     private var soundOn = true
     private var vibrationOn = true
 
-    private val modeBtnRadius = 60f
-    private val modeBtnMargin = 40f
-    private var modeBtnCenterX = 0f
-    private var modeBtnCenterY = 0f
-
     init {
+        loadSettings()
         initSound()
-        loadSettings()
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        loadSettings()
     }
 
     private fun loadSettings() {
-        val prefs = context.getSharedPreferences(Prefs.PREFS_NAME, Context.MODE_PRIVATE)
         soundOn = prefs.getBoolean(Prefs.KEY_SOUND, true)
         vibrationOn = prefs.getBoolean(Prefs.KEY_VIBRATION, true)
     }
@@ -86,98 +125,34 @@ class GameView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
         soundPool?.release()
         soundPool = null
+        super.onDetachedFromWindow()
     }
 
-    fun setMode(mode: Mode) {
-        currentMode = mode
-
-        when (mode) {
-            Mode.BUBBLE -> createBubbleGrid()
-            Mode.PAINT_SPLASH -> {
-                splashes.clear()
-                splashCount = 0
-                invalidate()
-            }
-        }
+    private fun playPopSound() {
+        if (soundOn) soundPool?.play(popSoundId, 1f, 1f, 1, 0, 1f)
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        screenWidth = w
-        screenHeight = h
-
-        modeBtnCenterX = w - modeBtnMargin - modeBtnRadius
-        modeBtnCenterY = modeBtnMargin + modeBtnRadius
-
-        createBubbleGrid()
+    private fun playSplashSound() {
+        if (soundOn) soundPool?.play(splashSoundId, 1f, 1f, 1, 0, 1f)
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
 
-        canvas.drawColor(bgColor)
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bgColor = Color.parseColor("#101010")
 
-        when (currentMode) {
-            Mode.BUBBLE -> drawBubbleMode(canvas)
-            Mode.PAINT_SPLASH -> drawPaintMode(canvas)
-        }
+    private var screenWidth = 0
+    private var screenHeight = 0
 
-        drawModeButton(canvas)
-    }
 
-    private fun drawBubbleMode(canvas: Canvas) {
-        for (b in bubbles) {
-            paint.color = if (b.isPopped) poppedColor else bubbleColor
-            b.draw(canvas, paint)
-        }
+    private val bubbles = mutableListOf<Bubble>()
+    private var poppedCount = 0
+    private var totalBubbles = 0
+    private var showResetMessage = false
 
-        paint.color = Color.WHITE
-        paint.textSize = 48f
-        canvas.drawText("Mode: Bubble Wrap", 40f, 80f, paint)
-        canvas.drawText("Popped: $poppedCount / $totalBubbles", 40f, 140f, paint)
-
-        if (showResetMessage) {
-            paint.textSize = 60f
-            val msg = "All popped! Tap to reset"
-            val w = paint.measureText(msg)
-            canvas.drawText(msg, (screenWidth - w) / 2, screenHeight / 2f, paint)
-        }
-    }
-
-    private fun drawPaintMode(canvas: Canvas) {
-        for (s in splashes) {
-            paint.style = Paint.Style.FILL
-            paint.color = s.color
-            paint.alpha = s.alpha
-            canvas.drawCircle(s.x, s.y, s.radius, paint)
-        }
-
-        paint.color = Color.WHITE
-        paint.textSize = 48f
-        paint.alpha = 255
-        canvas.drawText("Mode: Paint Splash", 40f, 80f, paint)
-        canvas.drawText("Splashes: $splashCount", 40f, 140f, paint)
-    }
-
-    private fun drawModeButton(canvas: Canvas) {
-        paint.style = Paint.Style.FILL
-        paint.color = Color.parseColor("#222222")
-        canvas.drawCircle(modeBtnCenterX, modeBtnCenterY, modeBtnRadius, paint)
-
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 4f
-        paint.color = Color.WHITE
-        canvas.drawCircle(modeBtnCenterX, modeBtnCenterY, modeBtnRadius, paint)
-
-        paint.style = Paint.Style.FILL
-        paint.textSize = 32f
-        val label = if (currentMode == Mode.BUBBLE) "Bub" else "Paint"
-        val tw = paint.measureText(label)
-        canvas.drawText(label, modeBtnCenterX - tw / 2, modeBtnCenterY + 12f, paint)
-    }
+    private val bubbleColor = Color.parseColor("#74C0FC")
+    private val poppedColor = Color.parseColor("#495057")
 
     private fun createBubbleGrid() {
         bubbles.clear()
@@ -188,8 +163,8 @@ class GameView @JvmOverloads constructor(
 
         val cols = 8
         val rows = 12
-
         val padding = 40f
+
         val availableWidth = screenWidth - padding * 2
         val availableHeight = screenHeight - padding * 3
 
@@ -211,39 +186,7 @@ class GameView @JvmOverloads constructor(
         invalidate()
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN) {
-
-            val x = event.x
-            val y = event.y
-
-            if (isInModeButton(x, y)) {
-                switchMode()
-                invalidate()
-                return true
-            }
-
-            when (currentMode) {
-                Mode.BUBBLE -> handleBubbleTouch(x, y)
-                Mode.PAINT_SPLASH -> handlePaintTouch(x, y)
-            }
-        }
-        return true
-    }
-
-    private fun isInModeButton(x: Float, y: Float): Boolean {
-        val dx = x - modeBtnCenterX
-        val dy = y - modeBtnCenterY
-        return sqrt(dx * dx + dy * dy) <= modeBtnRadius
-    }
-
-    private fun switchMode() {
-        currentMode =
-            if (currentMode == Mode.BUBBLE) Mode.PAINT_SPLASH else Mode.BUBBLE
-        setMode(currentMode)
-    }
-
-    private fun handleBubbleTouch(x: Float, y: Float) {
+    private fun handleBubblePop(x: Float, y: Float) {
         if (showResetMessage) {
             createBubbleGrid()
             return
@@ -254,41 +197,56 @@ class GameView @JvmOverloads constructor(
                 b.isPopped = true
                 poppedCount++
 
-                // 5.3 Haptic feedback
                 if (vibrationOn)
                     performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
 
                 playPopSound()
+                updateSatisfaction(2)
+                updateDailyChallenge()
+
                 break
             }
         }
 
+        if (poppedCount == totalBubbles) showResetMessage = true
         invalidate()
-
-        if (poppedCount == totalBubbles && totalBubbles > 0) {
-            showResetMessage = true
-        }
     }
 
-    private fun handlePaintTouch(x: Float, y: Float) {
-        val splashNum = 8
 
-        for (i in 0 until splashNum) {
+    private val splashes = mutableListOf<Splash>()
+    private var splashCount = 0
+
+    private fun handlePaintSplash(x: Float, y: Float) {
+
+        val particleCount = 14
+
+        repeat(particleCount) {
+
             val angle = Random.nextFloat() * 360f
-            val dist = Random.nextFloat() * 80f
+            val dist = Random.nextFloat() * 100f
             val rad = Math.toRadians(angle.toDouble())
 
             val sx = x + (dist * Math.cos(rad)).toFloat()
             val sy = y + (dist * Math.sin(rad)).toFloat()
-            val radius = Random.nextFloat() * 30f + 10f
+            val radius = (10..45).random().toFloat()
 
             val color = Color.HSVToColor(
-                255,
-                floatArrayOf(Random.nextFloat() * 360f, 0.8f, 1.0f)
+                floatArrayOf(Random.nextFloat() * 360f, 0.85f, 1f)
             )
 
-            splashes.add(Splash(sx, sy, radius, color))
-            splashCount++
+            val splash = Splash(
+                x = sx,
+                y = sy,
+                radius = radius,
+                color = color,
+                alpha = 255,
+                driftY = (1..4).random().toFloat(),
+                driftX = (-2..2).random().toFloat(),
+                shrinkRate = Random.nextFloat() * (0.4f - 0.15f) + 0.15f,
+                fadeRate = Random.nextInt(5, 12)
+            )
+
+            splashes.add(splash)
         }
 
         playSplashSound()
@@ -296,16 +254,118 @@ class GameView @JvmOverloads constructor(
         if (vibrationOn)
             performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
 
+        updateSatisfaction(1)
+        updateDailyChallenge()
         invalidate()
     }
 
-    private fun playPopSound() {
-        if (!soundOn) return
-        soundPool?.play(popSoundId, 1f, 1f, 1, 0, 1f)
+
+    private val sandCuts = mutableListOf<Pair<Float, Float>>()
+    private val sandRect = RectF()
+
+    private val cutPaint = Paint().apply {
+        color = Color.DKGRAY
+        strokeWidth = 8f
     }
 
-    private fun playSplashSound() {
-        if (!soundOn) return
-        soundPool?.play(splashSoundId, 1f, 1f, 1, 0, 1f)
+    private val sandPaint = Paint().apply {
+        color = Color.parseColor("#D2B48C")
+        style = Paint.Style.FILL
+    }
+
+    private fun handleSandCut(x: Float, y: Float) {
+        if (sandRect.contains(x, y)) {
+            sandCuts.add(x to y)
+            updateSatisfaction(1)
+            updateDailyChallenge()
+            invalidate()
+        }
+    }
+
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val x = event.x
+        val y = event.y
+
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            when (currentMode) {
+                Mode.BUBBLE -> handleBubblePop(x, y)
+                Mode.PAINT_SPLASH -> handlePaintSplash(x, y)
+                Mode.SAND_CUT -> handleSandCut(x, y)
+                else -> { }
+            }
+        }
+
+        return true
+    }
+
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawColor(bgColor)
+
+        when (currentMode) {
+
+            Mode.BUBBLE -> {
+                for (b in bubbles) {
+                    paint.color = if (b.isPopped) poppedColor else bubbleColor
+                    b.draw(canvas, paint)
+                }
+            }
+
+            Mode.PAINT_SPLASH -> {
+
+                val iterator = splashes.iterator()
+
+                while (iterator.hasNext()) {
+                    val s = iterator.next()
+
+                    if (splashMode == SplashMode.VANISH) {
+                        s.y += s.driftY
+                        s.x += s.driftX
+                        s.radius -= s.shrinkRate
+                        s.alpha -= s.fadeRate
+                    }
+
+                    if (splashMode == SplashMode.VANISH &&
+                        (s.radius <= 1f || s.alpha <= 5)
+                    ) {
+                        iterator.remove()
+                        continue
+                    }
+
+                    paint.color = s.color
+                    paint.alpha = s.alpha
+                    canvas.drawCircle(s.x, s.y, s.radius, paint)
+                }
+
+                paint.alpha = 255
+            }
+
+            Mode.SAND_CUT -> {
+                canvas.drawRect(sandRect, sandPaint)
+
+                for ((x, y) in sandCuts) {
+                    canvas.drawLine(x - 200, y, x + 200, y, cutPaint)
+                }
+            }
+
+            else -> {}
+        }
+
+        invalidate()
+    }
+
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        screenWidth = w
+        screenHeight = h
+
+        val left = w * 0.15f
+        val right = w * 0.85f
+        val top = h * 0.25f
+        val bottom = h * 0.8f
+        sandRect.set(left, top, right, bottom)
+
+        createBubbleGrid()
     }
 }
