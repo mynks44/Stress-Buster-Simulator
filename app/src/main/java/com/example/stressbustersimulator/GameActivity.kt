@@ -1,11 +1,10 @@
-package com.example.stressbustersimulator   // 👈 change if needed
+package com.example.stressbustersimulator
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,7 +22,6 @@ class GameActivity : AppCompatActivity() {
     }
 
     private lateinit var prefs: SharedPreferences
-
     private lateinit var gameView: GameView
     private lateinit var meter: ProgressBar
 
@@ -41,16 +39,13 @@ class GameActivity : AppCompatActivity() {
         prefs = getSharedPreferences(Prefs.PREFS_NAME, Context.MODE_PRIVATE)
 
         meter = findViewById(R.id.satisfactionMeter)
-
         gameView = findViewById(R.id.gameView)
 
         val modeName = intent.getStringExtra(EXTRA_START_MODE)
         try {
             val mode = GameView.Mode.valueOf(modeName ?: "BUBBLE")
             gameView.setMode(mode)
-        } catch (_: Exception) { }
-
-
+        } catch (_: Exception) {}
 
         gameView.onSatisfactionChange = { value ->
             runOnUiThread { meter.progress = value }
@@ -61,6 +56,25 @@ class GameActivity : AppCompatActivity() {
         val btnReward = findViewById<Button>(R.id.btnReward)
         btnReward.setOnClickListener {
             showRewardedAd()
+        }
+
+        val btnAuto = findViewById<Button>(R.id.btnAutoVanish)
+        val btnPermanent = findViewById<Button>(R.id.btnPermanent)
+        val btnClear = findViewById<Button>(R.id.btnClear)
+
+        btnAuto.setOnClickListener {
+            gameView.setSplashMode(GameView.SplashMode.VANISH)
+            Toast.makeText(this, "Auto Vanish Enabled", Toast.LENGTH_SHORT).show()
+        }
+
+        btnPermanent.setOnClickListener {
+            gameView.setSplashMode(GameView.SplashMode.PERMANENT)
+            Toast.makeText(this, "Permanent Mode Enabled", Toast.LENGTH_SHORT).show()
+        }
+
+        btnClear.setOnClickListener {
+            gameView.clearSplashes()
+            Toast.makeText(this, "Canvas Cleared", Toast.LENGTH_SHORT).show()
         }
 
         loadRewardedAd()
@@ -80,13 +94,12 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-
     private fun loadRewardedAd() {
         val adRequest = AdRequest.Builder().build()
 
         RewardedAd.load(
             this,
-            "ca-app-pub-3940256099942544/5224354917", // TEST Rewarded Ad ID
+            "ca-app-pub-3940256099942544/5224354917",
             adRequest,
             object : RewardedAdLoadCallback() {
                 override fun onAdFailedToLoad(adError: LoadAdError) {
@@ -110,7 +123,6 @@ class GameActivity : AppCompatActivity() {
         )
     }
 
-
     private fun showRewardedAd() {
         val ad = rewardedAd
         if (ad == null) {
@@ -121,7 +133,6 @@ class GameActivity : AppCompatActivity() {
 
         ad.show(this) { rewardItem: RewardItem ->
             Toast.makeText(this, "Reward earned! +1 Super Splash", Toast.LENGTH_SHORT).show()
-
             rewardedAd = null
             loadRewardedAd()
         }

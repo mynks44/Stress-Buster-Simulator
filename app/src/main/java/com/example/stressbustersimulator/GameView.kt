@@ -29,10 +29,9 @@ class GameView @JvmOverloads constructor(
         SHREDDER
     }
 
-    // NEW: Two splash behavior modes
     enum class SplashMode {
-        VANISH,        // splash disappears
-        PERMANENT      // splash stays forever
+        VANISH,
+        PERMANENT
     }
 
     private var splashMode: SplashMode = SplashMode.VANISH
@@ -40,6 +39,12 @@ class GameView @JvmOverloads constructor(
     fun setSplashMode(mode: SplashMode) {
         splashMode = mode
     }
+
+    fun clearSplashes() {
+        splashes.clear()
+        invalidate()
+    }
+
 
     private var currentMode: Mode = Mode.BUBBLE
 
