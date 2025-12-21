@@ -11,33 +11,28 @@ class Bubble(
     var radius: Float
 ) {
     var isPopped = false
-    private var popProgress = 0f   // 0 → 1 animation ripple scale
+    private var popProgress = 0f
 
     fun draw(canvas: Canvas, paint: Paint) {
 
         if (!isPopped) {
-            // ----- Outer Glow -----
             paint.color = Color.argb(60, 180, 220, 255)
             paint.style = Paint.Style.FILL
             canvas.drawCircle(x, y, radius * 1.15f, paint)
 
-            // ----- Main Bubble -----
             paint.color = Color.argb(255, 116, 192, 252)
             canvas.drawCircle(x, y, radius, paint)
 
-            // ----- Glossy Reflection -----
             paint.color = Color.WHITE
             paint.style = Paint.Style.FILL
             canvas.drawCircle(x - radius * 0.3f, y - radius * 0.3f, radius * 0.25f, paint)
 
-            // Border
             paint.style = Paint.Style.STROKE
             paint.color = Color.WHITE
             paint.strokeWidth = 4f
             canvas.drawCircle(x, y, radius, paint)
 
         } else {
-            // POP ripple effect
             popProgress += 0.07f
             if (popProgress < 1f) {
                 paint.style = Paint.Style.STROKE

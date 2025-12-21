@@ -11,39 +11,46 @@
         android:layout_height="match_parent" />
 
     <LinearLayout
-        android:id="@+id/topToolbar"
-        android:orientation="horizontal"
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="horizontal"
         android:padding="12dp"
-        android:gravity="center_vertical"
-        android:layout_gravity="top">
+        android:gravity="center_vertical">
 
-        <Button
-            android:id="@+id/btnAutoVanish"
+        <LinearLayout
+            android:id="@+id/splashControls"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginEnd="10dp"
-            android:text="AUTO VANISH"
-            android:textColor="@android:color/white"
-            android:background="@drawable/btn_glass" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/btnPermanent"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginEnd="10dp"
-            android:text="PERMANENT"
-            android:textColor="@android:color/white"
-            android:background="@drawable/btn_glass" />
+            <Button
+                android:id="@+id/btnAutoVanish"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp"
+                android:text="AUTO VANISH"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_glass" />
 
-        <Button
-            android:id="@+id/btnClear"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="CLEAR"
-            android:textColor="@android:color/white"
-            android:background="@drawable/btn_glass" />
+            <Button
+                android:id="@+id/btnPermanent"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp"
+                android:text="PERMANENT"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_glass" />
+
+            <Button
+                android:id="@+id/btnClear"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="CLEAR"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_glass" />
+        </LinearLayout>
 
         <View
             android:layout_width="0dp"
@@ -59,17 +66,18 @@
             android:textStyle="bold"
             android:background="@drawable/btn_glass"
             android:textColor="@android:color/white" />
+
     </LinearLayout>
 
     <ProgressBar
         android:id="@+id/satisfactionMeter"
-        android:layout_width="200dp"
-        android:layout_height="24dp"
+        android:layout_width="220dp"
+        android:layout_height="22dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="70dp"
         android:max="100"
         android:progress="0"
         android:progressDrawable="@drawable/satisfaction_progress"
-        android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="70dp"
         style="@android:style/Widget.ProgressBar.Horizontal" />
 
 </FrameLayout>

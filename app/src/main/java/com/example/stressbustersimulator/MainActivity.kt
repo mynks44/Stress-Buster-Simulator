@@ -20,7 +20,6 @@ class MainActivity : AppCompatActivity() {
         MobileAds.initialize(this) {}
 
         loadBannerAd()
-
         loadInterstitialAd()
 
         val btnPlayBubble = findViewById<Button>(R.id.btnPlayBubble)
@@ -52,11 +51,11 @@ class MainActivity : AppCompatActivity() {
         val adView = AdView(this)
         adView.setAdSize(AdSize.BANNER)
 
-        //  Google Test Banner ( for development)
-        adView.adUnitId = "ca-app-pub-3940256099942544/6300978111"
+        // PRODUCTION Banner Ad Unit ID
+        adView.adUnitId = "ca-app-pub-2039404506887879/1757902432"
 
-        //  When releasing, replace with banner ad unit ID:
-        // adView.adUnitId = "ca-app-pub-XXXXXXXXXXXX/BBBBBBBBBB"
+        // for testing
+        // adView.adUnitId = "ca-app-pub-3940256099942544/6300978111"
 
         adContainer.addView(adView)
 
@@ -68,14 +67,18 @@ class MainActivity : AppCompatActivity() {
     private fun loadInterstitialAd() {
         val adRequest = AdRequest.Builder().build()
 
-        // Test interstitial ID ( while developing)
-        val testId = "ca-app-pub-3940256099942544/1033173712"
+        //  PRODUCTION Interstitial Ad Unit ID
+        val adUnitId = "ca-app-pub-2039404506887879/4624449363"
+
+        // for testing
+        // val adUnitId = "ca-app-pub-3940256099942544/1033173712"
 
         InterstitialAd.load(
             this,
-            testId,  // <--- \ test ID for now
+            adUnitId,
             adRequest,
             object : InterstitialAdLoadCallback() {
+
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
                 }

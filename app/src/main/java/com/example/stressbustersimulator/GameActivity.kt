@@ -1,10 +1,12 @@
-package com.example.stressbustersimulator
+package com.example.stressbustersimulator   // 👈 change if needed
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -24,6 +26,7 @@ class GameActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
     private lateinit var gameView: GameView
     private lateinit var meter: ProgressBar
+    private lateinit var splashControls: LinearLayout
 
     private var rewardedAd: RewardedAd? = null
 
@@ -36,31 +39,44 @@ class GameActivity : AppCompatActivity() {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
 
+
         prefs = getSharedPreferences(Prefs.PREFS_NAME, Context.MODE_PRIVATE)
 
-        meter = findViewById(R.id.satisfactionMeter)
         gameView = findViewById(R.id.gameView)
+        meter = findViewById(R.id.satisfactionMeter)
+        splashControls = findViewById(R.id.splashControls)
+
+        val btnReward = findViewById<Button>(R.id.btnReward)
+        val btnAuto = findViewById<Button>(R.id.btnAutoVanish)
+        val btnPermanent = findViewById<Button>(R.id.btnPermanent)
+        val btnClear = findViewById<Button>(R.id.btnClear)
+
 
         val modeName = intent.getStringExtra(EXTRA_START_MODE)
-        try {
-            val mode = GameView.Mode.valueOf(modeName ?: "BUBBLE")
-            gameView.setMode(mode)
-        } catch (_: Exception) {}
+        val mode = try {
+            GameView.Mode.valueOf(modeName ?: GameView.Mode.BUBBLE.name)
+        } catch (_: Exception) {
+            GameView.Mode.BUBBLE
+        }
+
+        gameView.setMode(mode)
+
+        splashControls.visibility =
+            if (mode == GameView.Mode.PAINT_SPLASH) View.VISIBLE else View.GONE
+
 
         gameView.onSatisfactionChange = { value ->
             runOnUiThread { meter.progress = value }
         }
 
+
         initDailyChallenge()
 
-        val btnReward = findViewById<Button>(R.id.btnReward)
+
         btnReward.setOnClickListener {
             showRewardedAd()
         }
 
-        val btnAuto = findViewById<Button>(R.id.btnAutoVanish)
-        val btnPermanent = findViewById<Button>(R.id.btnPermanent)
-        val btnClear = findViewById<Button>(R.id.btnClear)
 
         btnAuto.setOnClickListener {
             gameView.setSplashMode(GameView.SplashMode.VANISH)
@@ -80,7 +96,6 @@ class GameActivity : AppCompatActivity() {
         loadRewardedAd()
     }
 
-
     private fun initDailyChallenge() {
         val today = LocalDate.now().toString()
         val lastDay = prefs.getString(Prefs.KEY_LAST_PLAY_DATE, "")
@@ -99,25 +114,17 @@ class GameActivity : AppCompatActivity() {
 
         RewardedAd.load(
             this,
-            "ca-app-pub-3940256099942544/5224354917",
+            "ca-app-pub-2039404506887879/8120841243",
+//            for testing
+//            "ca-app-pub-3940256099942544/5224354917",
             adRequest,
             object : RewardedAdLoadCallback() {
                 override fun onAdFailedToLoad(adError: LoadAdError) {
                     rewardedAd = null
-                    Toast.makeText(
-                        this@GameActivity,
-                        "Rewarded Ad failed to load",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
 
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedAd = ad
-                    Toast.makeText(
-                        this@GameActivity,
-                        "Rewarded Ad loaded",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
             }
         )
@@ -131,7 +138,7 @@ class GameActivity : AppCompatActivity() {
             return
         }
 
-        ad.show(this) { rewardItem: RewardItem ->
+        ad.show(this) { _: RewardItem ->
             Toast.makeText(this, "Reward earned! +1 Super Splash", Toast.LENGTH_SHORT).show()
             rewardedAd = null
             loadRewardedAd()
